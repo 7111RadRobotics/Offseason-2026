@@ -21,6 +21,7 @@ import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.util.sendable.SendableBuilder;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
@@ -39,6 +40,7 @@ public class Swerve extends SubsystemBase {
 
     private final SwerveDrivePoseEstimator swerveOdometry;
     private Field2d field = new Field2d();
+    private FieldObject2d obj = field.getObject("Robot shooter vision");
 
     private final GenericGyro gyro;
     private SwerveModuleState[] states = new SwerveModuleState[]{};
@@ -157,6 +159,7 @@ public class Swerve extends SubsystemBase {
         SmartDashboard.putNumber("Gyro Yaw", getYaw().getDegrees());
 
         field.setRobotPose(getPose());
+        obj.setPose(getPose().transformBy(new Transform2d(0, -0.203194, Rotation2d.fromDegrees(0))));
         SmartDashboard.putData(field);
         robotPosePublisher.set(getPose());
 

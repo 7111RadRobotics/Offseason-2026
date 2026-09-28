@@ -70,7 +70,7 @@ public class Aimbot extends SubsystemBase{
     private final double camToTargetHeightOffset = 2/3;
 
     /** Offset between rio yaw and direction the robot shoots */
-    private final double rioToShooterOffset = -1.5;
+    private final double rioToShooterOffset = 0;
 
     /** shooter wheel diameter, in meters */
     private final double shooterDiameter = Units.inchesToMeters(4);
@@ -265,6 +265,8 @@ public class Aimbot extends SubsystemBase{
     public double getCalculatedSpeed() {
         return this.calculatedSpeed;
     }
+
+    
 
     public double getCalculatedDirection() {
 
