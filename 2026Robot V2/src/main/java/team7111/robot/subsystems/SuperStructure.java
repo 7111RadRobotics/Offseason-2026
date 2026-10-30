@@ -9,6 +9,7 @@ import javax.print.attribute.standard.RequestingUserName;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
@@ -260,9 +261,7 @@ public class SuperStructure extends SubsystemBase {
          * 
          */
         if(driverController.getStartButton()) {
-            swerve.resetOdometry(new Pose2d(0, 0, Rotation2d.fromDegrees(0)));
-            //swerve.zeroGyro();
-            //swerve.resetOdometry(new Pose2d(0, 0, swerve.getYaw()));
+            swerve.zeroGyro();
         }
 
         if(driverController.getBackButtonPressed()) {
@@ -435,9 +434,9 @@ public class SuperStructure extends SubsystemBase {
                         }
                     }
                     if((swerve.getPose().getY() >= Units.inchesToMeters(317.69/2) && autoTargeting) || (!autoTargeting && operatorController.getLeftBumperButton())) {
-                        targeting.setCustomTarget(new Pose3d(corner.getX(), corner.getY() + Units.inchesToMeters(307.69) / 4, corner.getZ(), null));
+                        targeting.setCustomTarget(new Pose3d(corner.getX(), corner.getY() + Units.inchesToMeters(307.69) / 4, corner.getZ(), Rotation3d.kZero));
                     } else {
-                        targeting.setCustomTarget(new Pose3d(corner.getX(), corner.getY() - Units.inchesToMeters(307.69) / 4, corner.getZ(), null));
+                        targeting.setCustomTarget(new Pose3d(corner.getX(), corner.getY() - Units.inchesToMeters(307.69) / 4, corner.getZ(), Rotation3d.kZero));
                     }
                 }
             }
@@ -508,7 +507,7 @@ public class SuperStructure extends SubsystemBase {
     private boolean stowed(){
         targeting.setToggle(true);
         targeting.setShotType(shotType.Transport);
-        shooter.setState(ShooterState.followAimbot);
+        shooter.setState(ShooterState.stopped);
         intake.setState(IntakeState.stow);
         hopper.setState(HopperState.stopped);
 
@@ -521,7 +520,7 @@ public class SuperStructure extends SubsystemBase {
     private boolean deployed(){
         targeting.setToggle(true);
         targeting.setShotType(shotType.Transport);
-        shooter.setState(ShooterState.followAimbot);
+        shooter.setState(ShooterState.stopped);
         if(intaking){
             setSuperState(SuperState.intake);
             return true;
@@ -549,7 +548,7 @@ public class SuperStructure extends SubsystemBase {
     private boolean intake(){
         targeting.setToggle(true);
         targeting.setShotType(shotType.Transport);
-        shooter.setState(ShooterState.followAimbot);
+        shooter.setState(ShooterState.stopped);
         intake.setState(IntakeState.intake);
         hopper.setState(HopperState.intake);
         

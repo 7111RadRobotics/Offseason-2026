@@ -8,6 +8,7 @@ import java.util.List;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.networktables.StructPublisher;
@@ -35,14 +36,14 @@ public class Autonomous extends SubsystemBase {
     private StructArrayPublisher<Pose2d> hubPublisher = 
             NetworkTableInstance.getDefault().getStructArrayTopic("Hub Presets", Pose2d.struct).publish();
 
-    private WaypointConstraints fastTransConstraints = new WaypointConstraints(8, 0, 5, 1);
+    private WaypointConstraints fastTransConstraints = new WaypointConstraints(8, 0, 3, 1);
     private WaypointConstraints fastRotConstraints = new WaypointConstraints(720, 0, 180, 90);
     
-    private WaypointConstraints balancedTransConstraints = new WaypointConstraints(6, 2, 5, 0.25);
-    private WaypointConstraints balancedRotConstraints = new WaypointConstraints(270, 0, 180, 5);
+    private WaypointConstraints balancedTransConstraints = new WaypointConstraints(4, 0, 3, 0.25);
+    private WaypointConstraints balancedRotConstraints = new WaypointConstraints(360, 0, 180, 5);
 
-    private WaypointConstraints slowTransConstraints = new WaypointConstraints(1, 0, 3, 0.1);
-    private WaypointConstraints slowRotConstraints = new WaypointConstraints(180, 0, 180, 0.8);
+    private WaypointConstraints slowTransConstraints = new WaypointConstraints(1.5, 0, 3, 0.1);
+    private WaypointConstraints slowRotConstraints = new WaypointConstraints(360, 0, 180, 0.8);
 
     private SendableChooser<Autos> autoChooser = new SendableChooser<>();
     private SuperStructure superStructure;
@@ -283,11 +284,14 @@ public class Autonomous extends SubsystemBase {
                     return true;
                 }));
                 auto.add(new AutoAction(SuperState.score).withAlternateCondition(() -> timeDelay(5)));
-                auto.add(new AutoAction(SuperState.intake));
+                auto.add(new AutoAction(SuperState.intake).withNoConditions());
                 auto.add(new AutoAction(getPath(Paths.depot)).withOptionalCondition(() -> timeDelay(5)));
                 auto.add(new AutoAction(getPath(Paths.hubSetpointM)));
                 auto.add(new AutoAction(SuperState.prepareHubShot));
-                auto.add(new AutoAction(SuperState.score).withAlternateCondition(() -> timeDelay(5)));
+                auto.add(new AutoAction(SuperState.score).withAlternateCondition(() -> {
+                    superStructure.targeting.setShotType(shotType.Parabolic);
+                    return timeDelay(15);
+                }));
                 break;
             case shootOutpost:
                 assumedStartingPose = hubStartPose;
@@ -331,10 +335,7 @@ public class Autonomous extends SubsystemBase {
         // define Path object for each Paths enum using a switch statement
         switch (path) {
             case forward:
-                waypoints.add(balancedPoint(6.08, 0.5, 0));
-                waypoints.add(balancedPoint(7.08, 1, 0));
-                waypoints.add(balancedPoint(7.08, 5, 0));
-                waypoints.add(slowPoint(6.08, 6, 0));
+                waypoints.add(slowPoint(1, 0, 180));
                 
                 break;
             case forwardR:

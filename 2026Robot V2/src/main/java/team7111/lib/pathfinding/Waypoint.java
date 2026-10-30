@@ -32,18 +32,29 @@ public class Waypoint {
     public boolean isAtWaypoint(Pose2d robotPose, ChassisSpeeds currSpeeds){
 
         //Checks translation and rotation tolerance
-        if (robotPose.getX() < (pose.getX() + transConstraints.getTolerance())
-         && robotPose.getX() > (pose.getX() - transConstraints.getTolerance()) 
-         && robotPose.getY() < (pose.getY() + transConstraints.getTolerance())
-         && robotPose.getY() > (pose.getY() - transConstraints.getTolerance()) 
-         && robotPose.getRotation().getDegrees() < pose.getRotation().getDegrees() + rotConstraints.getTolerance()
-         && robotPose.getRotation().getDegrees() > pose.getRotation().getDegrees() - rotConstraints.getTolerance()
-         && Math.abs(Math.hypot(currSpeeds.vxMetersPerSecond, currSpeeds.vyMetersPerSecond)) <= transConstraints.getMaxSpeed()
-         && Math.abs(Math.hypot(currSpeeds.vxMetersPerSecond, currSpeeds.vyMetersPerSecond)) >= transConstraints.getMinSpeed()){
-            
-            return true;
-            
-        }
+        double translationError = Math.hypot(
+    robotPose.getX() - pose.getX(),
+    robotPose.getY() - pose.getY()
+);
+
+double rotationError = Math.abs(
+    robotPose.getRotation()
+        .minus(pose.getRotation())
+        .getDegrees()
+);
+
+double currentSpeed = Math.hypot(
+    currSpeeds.vxMetersPerSecond,
+    currSpeeds.vyMetersPerSecond
+);
+
+if (translationError <= transConstraints.getTolerance()
+        && rotationError <= rotConstraints.getTolerance()
+        && currentSpeed <= transConstraints.getMaxSpeed()
+        && currentSpeed >= transConstraints.getMinSpeed()) {
+
+    return true;
+}
 
         
         return false;

@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -75,6 +76,26 @@ public class Path {
     public Waypoint[] getWaypoints(){
         return waypoints;
     }
+
+    public double getRotationSpeed(){
+        double speed = rotSpeed.getAsDouble();
+        WaypointConstraints waypointConstraints = getCurrentWaypoint().getRotationConstraints();
+        if(speed > waypointConstraints.getMaxSpeed()) {
+            speed = waypointConstraints.getMaxSpeed();
+        }
+        if(speed < -waypointConstraints.getMaxSpeed()){
+            speed = -waypointConstraints.getMaxSpeed();
+        }
+        if(Math.abs(speed) < waypointConstraints.getMinSpeed()){
+            if(speed > 0){
+                speed = waypointConstraints.getMinSpeed();
+            }else{
+                speed = -waypointConstraints.getMinSpeed();
+            }
+        }
+        //speed = rotSpeed.getAsDouble();
+        return speed;
+    }
     
    
 
@@ -88,7 +109,7 @@ public class Path {
         double dt = 1.0/50.0;
 
         double desCompSpeed = Math.hypot(xTransSpeed.getAsDouble(), yTransSpeed.getAsDouble());
-        double rotSpeed = this.rotSpeed.getAsDouble();
+        double rotSpeed = Units.radiansToDegrees(this.rotSpeed.getAsDouble());
         double xSpeed = xTransSpeed.getAsDouble();
         double ySpeed = yTransSpeed.getAsDouble();
         WaypointConstraints constraints = getCurrentWaypoint().getTranslationConstraints();
@@ -171,7 +192,7 @@ public class Path {
     public void setLastSpeeds(double xSpeed, double ySpeed, double rotSpeed) {
         lastXSpeed = xSpeed;
         lastYSpeed = ySpeed;
-        lastRotSpeed = rotSpeed;
+        lastRotSpeed = Units.radiansToDegrees(rotSpeed);
     }
 
     public ChassisSpeeds getSpeeds() {
@@ -268,9 +289,7 @@ public class Path {
      * If path is finished, sets path to finished and will not path to new waypoint.
      */
     public void periodic(){
-        SmartDashboard.putBoolean("firstSpeed?", firstSpeed);
-        firstSpeed = false;
-
+        SmartDashboard.putBoolean("IsWaypoint", waypoints[currentWaypointIndex].isAtWaypoint(robotPose.get(),new ChassisSpeeds(getChassisSpeeds().vxMetersPerSecond, getChassisSpeeds().vyMetersPerSecond, getChassisSpeeds().omegaRadiansPerSecond)));
         SmartDashboard.putNumber("Last X Speed", lastXSpeed);
         SmartDashboard.putNumber("Last Y Speed", lastYSpeed);
         SmartDashboard.putNumber("Last Rot Speed", lastRotSpeed);

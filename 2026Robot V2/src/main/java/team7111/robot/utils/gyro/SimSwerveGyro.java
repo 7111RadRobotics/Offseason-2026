@@ -32,7 +32,7 @@ public class SimSwerveGyro extends SimGyro {
 
     @Override
     public Rotation2d getYaw() {
-        return gyroRotation;
+        return Rotation2d.fromDegrees(gyroSim.getAngle());
     }
 
     @Override
@@ -56,11 +56,11 @@ public class SimSwerveGyro extends SimGyro {
         double rotationDegrees = gyroSim.getAngle();
 
         rotationDegrees += degreeRate;
-        if(rotationDegrees > 180){
+        /*if(rotationDegrees > 180){
             rotationDegrees = -180 + (rotationDegrees % 180);
         }else if(rotationDegrees < -180){
             rotationDegrees = 180 - (rotationDegrees % -180);
-        }
+        }*/
 
         gyroRotation = Rotation2d.fromDegrees(rotationDegrees);
         gyroSim.setAngle(rotationDegrees);

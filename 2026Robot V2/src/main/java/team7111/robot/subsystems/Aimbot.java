@@ -38,8 +38,8 @@ public class Aimbot extends SubsystemBase{
 
     private Pose2d aimPoint = null;
 
-    private final Pose3d blueHub = new Pose3d(4.635, 4.034536, Units.inchesToMeters(72), null); 
-    private final Pose3d redHub = new Pose3d(11.946, 4.034536, Units.inchesToMeters(72), null); 
+    private final Pose3d blueHub = new Pose3d(Units.inchesToMeters(182.11), Units.inchesToMeters(158.845), Units.inchesToMeters(72), Rotation3d.kZero); 
+    private final Pose3d redHub = new Pose3d(Units.inchesToMeters(469.11), Units.inchesToMeters(158.845), Units.inchesToMeters(72), Rotation3d.kZero); 
 
     //CONTROLLER
     /** Controls the manual firing, and adds angle if the stick is moved */
@@ -94,14 +94,14 @@ public class Aimbot extends SubsystemBase{
     /** Offset from ground the ball leaves the shooter, in meters */
     private final double shooterHeightOffset = Units.inchesToMeters(20);
     /** Offset from the center of the robot to the shooter, in meters */
-    private final double shooterXOffset = 0.0;
+    private final double shooterXOffset = -Units.inchesToMeters(7.625057);
     /** Offset from the center of the robot to the shooter in meters */
-    private double shooterYOffset = 0.15;
+    private double shooterYOffset = -0.206547;
     /** Optimal rpm of the shooter wheel for max distance with continuous fire, in rotations per minute */
     private final double shooterOptimalSpeed = 1500;
 
     /** Extra multiplier to account for losses from drag, rpm loss from ball, ect */
-    private final double RPMMult = 1.7;
+    private final double RPMMult = 1.625;
 
     /** How far from horizontal the camera is, in degrees */
     private double cameraAngleOffset = 0.0;
@@ -270,13 +270,15 @@ public class Aimbot extends SubsystemBase{
 
     public double getCalculatedDirection() {
 
+        
+
         // Checks and ensures between -180 and 180
         double returnAngle = degreeToTarget + rioToShooterOffset;
-        if(returnAngle < -180) {
+        /*if(returnAngle < -180) {
             returnAngle += 360;
         } else if(returnAngle > 180) {
             returnAngle -= 360;
-        }
+        }*/
 
         return returnAngle;
     }
@@ -348,17 +350,17 @@ public class Aimbot extends SubsystemBase{
 
     /** Calculates angle and speed for the shooter. If calculations are disabled, acts as a transport mode.*/
     public void periodic() {
+
+        SmartDashboard.putNumber("SnapAngle", getCalculatedDirection());
+        SmartDashboard.putNumber("Current Angle", robotPose.get().getRotation().getDegrees());
         SmartDashboard.putBoolean("Is enabled", isEnabled);
         SmartDashboard.putBoolean("Is vision enabled", isUsingVision);
         SmartDashboard.putNumber("angle to target", degreeToTarget);
         SmartDashboard.putString("ShotType", currentShotType.toString());
+        SmartDashboard.putNumber("vX", robotVelocity.get().getX());
+        SmartDashboard.putNumber("vY", robotVelocity.get().getY());
 
-        if(DriverStation.getAlliance().isPresent()){
-            if(DriverStation.getAlliance().get().equals(Alliance.Blue)){
-                shooterYOffset = -0.15;
-            }
-        }
-
+       
         if(!isEnabled) {
             calculatedAngle = lowestShooterAngle;
             calculatedSpeed = 0;
@@ -471,7 +473,12 @@ public class Aimbot extends SubsystemBase{
         double xdif = Math.cos(Units.degreesToRadians(degreeToTarget)) * dist;
         double ydif = Math.sin(Units.degreesToRadians(degreeToTarget)) * dist;
 
-        aimPoint = new Pose2d(robotPose.get().getX() + xdif, robotPose.get().getY() + ydif, new Rotation2d(0));
+        Transform2d botVel = robotVelocity.get();
+        
+
+        aimPoint = targetPose.toPose2d().transformBy(new Transform2d(-botVel.getX(), -botVel.getY(), Rotation2d.kZero));
+        
+        
 
         SmartDashboard.putNumber("Time to impact", t);
         
@@ -480,9 +487,9 @@ public class Aimbot extends SubsystemBase{
         Pose2d targetPose2d = new Pose2d(targetPose.getX(), targetPose.getY(), new Rotation2d(0));
         targetPoint.set(targetPose2d);
 
-        SmartDashboard.putNumber("XVel", robotVelocity.get().getX());
-        SmartDashboard.putNumber("YVel", robotVelocity.get().getY());
 
+        SmartDashboard.putNumber("xVelocity", botVel.getX());
+        SmartDashboard.putNumber("yVelocity", botVel.getY());
 
     }
 
@@ -663,7 +670,7 @@ public class Aimbot extends SubsystemBase{
 
         possibleToFire = false;
 
-        Pose2d pose = robotPose.get();
+        Pose2d pose = robotPose.get().transformBy(new Transform2d(shooterXOffset, shooterYOffset, Rotation2d.kZero));
         Transform2d vel = robotVelocity.get();
 
         double dx = targetPose.getX() - pose.getX();
@@ -694,7 +701,7 @@ public class Aimbot extends SubsystemBase{
             double horizontalSpeed = Math.hypot(shotVX, shotVY);
             double shootingAngle = Units.radiansToDegrees(Math.atan2(shotVZ, horizontalSpeed));
             double shootingSpeedMps = Math.sqrt(shotVX * shotVX + shotVY * shotVY + shotVZ * shotVZ);
-            double shootingSpeedRpm = (shootingSpeedMps / wheelCircumference) * 60.0;
+            double shootingSpeedRpm = (shootingSpeedMps / wheelCircumference) * 60.0 * 0.9;
 
             if (shootingSpeedRpm <= maxShooterSpeed &&
                 shootingAngle >= minShooterAngle &&
@@ -737,6 +744,7 @@ public class Aimbot extends SubsystemBase{
         }
         uninterruptedFiring = false;
         possibleToFire = false;
+
     }
 
     /** Sets angle to as close to horizontal as possible, and speed to 0 */
@@ -824,16 +832,16 @@ public class Aimbot extends SubsystemBase{
             }
             //Robot relative
             Transform3d calculatedPos = new Transform3d(
-                visionResults.getX() - camToTargetXOffset - shooterXOffset, //Distance to the target from center of robot
-                visionResults.getY() - shooterYOffset, //Left/Right offset of the robot to the target
-                visionResults.getZ() + camToTargetHeightOffset, //Height of the target (from 0)
+                visionResults.getX() + camToTargetXOffset + shooterXOffset, //Distance to the target from center of robot
+                visionResults.getY()+ shooterYOffset, //Left/Right offset of the robot to the target
+                visionResults.getZ()+ camToTargetHeightOffset, //Height of the target (from 0)
                 null);
 
 
             //FOR ROTATION CALUCLATION
             //X difference and y difference
-            double xdif = targetPose.getX() - robotPose.get().getX() - shooterXOffset;
-            double ydif = targetPose.getY() - robotPose.get().getY() - shooterYOffset;
+            double xdif = targetPose.getX() - robotPose.get().transformBy(new Transform2d(shooterXOffset, 0.0, Rotation2d.kZero)).getX();
+            double ydif = targetPose.getY() - robotPose.get().transformBy(new Transform2d(0, shooterYOffset, Rotation2d.kZero)).getY();
 
             double rotation = 0;
             
@@ -845,12 +853,11 @@ public class Aimbot extends SubsystemBase{
 
             //ROTATION CALCULATION
 
-            double distance = Math.sqrt(Math.pow(calculatedPos.getX(), 2) + Math.pow(calculatedPos.getY(), 2));
+            double distance = Math.hypot(calculatedPos.getX(), calculatedPos.getY());
             Transform3d returnedTrans = new Transform3d(distance,
                 0.0,
                 calculatedPos.getZ(),
                 new Rotation3d(new Rotation2d(rotation)));
-            degreeToTarget = rotation;
 
             return returnedTrans;
         }
@@ -861,8 +868,8 @@ public class Aimbot extends SubsystemBase{
             null);
             
         //X difference and y difference
-        double xdif = targetPose.getX() - robotPose.get().getX() - shooterXOffset;
-        double ydif = targetPose.getY() - robotPose.get().getY() - shooterYOffset;
+        double xdif = targetPose.getX() - robotPose.get().transformBy(new Transform2d(shooterXOffset, 0.0, Rotation2d.kZero)).getX();
+        double ydif = targetPose.getY() - robotPose.get().transformBy(new Transform2d(0, shooterYOffset, Rotation2d.kZero)).getY();
 
         double rotation = 0;
         

@@ -111,20 +111,18 @@ public class Swerve extends SubsystemBase {
         /*pathMaster.setTranslationPID(3, 0.015215, 0.1012);
         pathMaster.setRotationPID(0.1425, 0.000, 0.00240225);*/
 
-        pathMaster.setTranslationPID(5, 0.01, 0.001);
-        pathMaster.setRotationPID(0.25, 0, 0.003);
+        pathMaster.setTranslationPID(15, 0.05, 0.001);
+        pathMaster.setRotationPID(0.22, 0.0001, 0.02);
         pathMaster.setInversions(false, false, RobotBase.isSimulation(), false);
 
         
         swerveOdometry = new SwerveDrivePoseEstimator(SwerveConstants.kinematics, getYaw(), 
             getPositions(), new Pose2d(4.635 - Units.feetToMeters(20), 4.034536, Rotation2d.fromDegrees(0)));
         
-        snapAnglePID = new PIDController(0.25, 0, 0.002);
+        snapAnglePID = new PIDController(0.22, 0.0001, 0.02);
         gamepieceAnglePID = new PIDController(0.01, 0, 0);
 
-        SmartDashboard.putNumber("SnapAngle P", 0.25);
-        SmartDashboard.putNumber("SnapAngle I", 0.0);
-        SmartDashboard.putNumber("SnapAngle D", 0.002);
+        
 
         //Velocity kinematics object
         kinematics = SwerveConstants.kinematics;
@@ -140,10 +138,6 @@ public class Swerve extends SubsystemBase {
         SmartDashboard.putNumber("Snap angle", snapAngleSetpoint);
 
         SmartDashboard.putNumber("Rotation", getYaw().getDegrees());
-
-        snapAnglePID.setP(SmartDashboard.getNumber("SnapAngle P", 0.25));
-        snapAnglePID.setI(SmartDashboard.getNumber("SnapAngle I", 0));
-        snapAnglePID.setD(SmartDashboard.getNumber("SnapAngle D", 0.002));
 
         gyro.update();
         swerveOdometry.update(getYaw(), getPositions());
@@ -173,8 +167,8 @@ public class Swerve extends SubsystemBase {
             pathMaster.useAllianceFlipping(DriverStation.getAlliance().get() == Alliance.Red, false);
         }
 
-        SmartDashboard.putNumber("X speed", robotXVelocity);
-        SmartDashboard.putNumber("Y speed", robotYVelocity);
+        SmartDashboard.putNumber("X vel", getVelocity().getX());
+        SmartDashboard.putNumber("Y vel", getVelocity().getY());
     }
 
     public void simulationPeriodic(){
@@ -276,8 +270,8 @@ public class Swerve extends SubsystemBase {
         hypot = Math.pow(hypot, 3);
         double theta = Math.atan2(forwardBack, leftRight);
 
-        forwardBack = hypot * Math.sin(theta);
-        leftRight = hypot * Math.cos(theta);
+        forwardBack = Math.copySign(hypot * Math.sin(theta), forwardBack); // hypot * Math.sin(theta)
+        leftRight = Math.copySign(hypot * Math.cos(theta), leftRight);  //hypot * Math.cos(theta);
         // Converting to m/s
         forwardBack *= SwerveConstants.maxDriveVelocity;
         leftRight *= SwerveConstants.maxDriveVelocity;
@@ -304,11 +298,12 @@ public class Swerve extends SubsystemBase {
 
         // Converts module states to chassis speeds
         ChassisSpeeds chassisSpeedVelocities = kinematics.toChassisSpeeds(
-        modules[0].getState(), modules[1].getState(), modules[2].getState(), modules[3].getState());
+        states[0], states[1], states[2], states[3]);
 
-        robotXVelocity = chassisSpeedVelocities.vxMetersPerSecond; 
-        robotYVelocity = chassisSpeedVelocities.vyMetersPerSecond;
+        robotXVelocity = chassisSpeeds.vxMetersPerSecond; 
+        robotYVelocity = chassisSpeeds.vyMetersPerSecond;
         rotationVelocity = Units.radiansToDegrees(chassisSpeedVelocities.omegaRadiansPerSecond);
+
     }
 
     public void setSwerveState(SwerveState swerveState){
@@ -379,12 +374,7 @@ public class Swerve extends SubsystemBase {
 
     /** Robot relative, X is forward/back, Y is left/Right, rotation is the robot rotation value */
     public Transform2d getVelocity() {
-        if(robotXVelocity > 0.2) {
-            robotXVelocity = 0;
-        }
-        if(robotYVelocity > 0.2) {
-            robotYVelocity = 0;
-        }
+       
 
         return new Transform2d(robotXVelocity, robotYVelocity, new Rotation2d(rotationVelocity));
     }

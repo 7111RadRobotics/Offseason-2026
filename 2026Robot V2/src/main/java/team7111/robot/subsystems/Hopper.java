@@ -143,7 +143,7 @@ public class Hopper extends SubsystemBase {
         shooterIndexerSpeed = 0.0;
         //spindexerSpeed = -0.2;//0.36;
         isFollowingShooter = true;
-        if (!timeDelay(timer, 1)) {
+        if (!timeDelay(timer, 1.5)) {
                 spindexerSpeed = -0.2;
         } else {
             spindexerSpeed = 0;
@@ -208,6 +208,12 @@ public class Hopper extends SubsystemBase {
         indexerSetpoint = rpm * 1.9;
     }
 
+    /**Method that returns true after an elapsed time.
+     * 
+     * @param timer
+     * @param delay in seconds
+     * @return
+     */
     private boolean timeDelay(Timer timer, double delay){
         timer.start();
         if (timer.hasElapsed(delay)) {
