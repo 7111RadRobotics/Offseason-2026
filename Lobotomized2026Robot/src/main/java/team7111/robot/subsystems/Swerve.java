@@ -84,10 +84,7 @@ public class Swerve extends SubsystemBase {
         runPath,
         manual,
         stationary,
-        x,
         snapAngle,
-        bumpAlign,
-        followGamePiece
     };
 
     public Swerve() {
@@ -216,15 +213,7 @@ public class Swerve extends SubsystemBase {
             case stationary:
                 manual(0, 0, 0, false, false, false);
                 break;
-            case x:
-                SwerveModuleState[] states = new SwerveModuleState[]{
-                    new SwerveModuleState(0.0, Rotation2d.fromDegrees(45)),
-                    new SwerveModuleState(0.0, Rotation2d.fromDegrees(-45)),
-                    new SwerveModuleState(0.0, Rotation2d.fromDegrees(135)),
-                    new SwerveModuleState(0.0, Rotation2d.fromDegrees(-135)),
-                };
-                setModuleStates(states);
-                break;
+        
             case snapAngle:
                 // Optimize code
                 double difference = snapAngleSetpoint - getYaw().getDegrees();
@@ -238,23 +227,8 @@ public class Swerve extends SubsystemBase {
 
                 manual(joystickXTranslation.getAsDouble(), joystickYTranslation.getAsDouble(), snapAnglePID.calculate(getYaw().getDegrees() * simMult, snapAngleSetpoint), isDriveFieldRelative, false, false);
                 break;
-            case followGamePiece:
-                manual(joystickXTranslation.getAsDouble(), joystickYTranslation.getAsDouble(), gamepieceAnglePID.calculate(gamepieceYaw, snapAngleSetpoint), false, false, false);
-                break;
-            case bumpAlign:
-                double angle = joystickYaw.getAsDouble();
-                Pose2d pose = getPose();
-
-                if ((pose.getY() > 1.4 && pose.getY() < 3.4) 
-                 || (pose.getY() > 4.5 && pose.getY() < 6.5)){
-                    if ((pose.getX() > 3.6 && pose.getX() < 5.5) 
-                     || (pose.getX() > 11 && pose.getX() < 12.98)){
-                        angle = snapAnglePID.calculate(-getYaw().getDegrees(), 45);
-                    }
-                }
-
-                manual(joystickXTranslation.getAsDouble(), joystickYTranslation.getAsDouble(), angle, isDriveFieldRelative, false, false);
-                break;
+           
+           
             default:
                 break;
         }

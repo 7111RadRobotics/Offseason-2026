@@ -55,21 +55,14 @@ public class Vision extends SubsystemBase{
     private AprilTagFieldLayout fieldLayout;
     private PhotonPoseEstimator poseEstimator;
 
-    // TODO: change variable names on actual robot
-    /*public final Camera limelight = new Camera(
-        "photonvision", 
-        Constants.vision.cameraToRobotCenter1, 
-        new EstimatedRobotPose(estPose3d, 0.0, null, PoseStrategy.AVERAGE_BEST_TARGETS), 
-        this
-        );*/
-    public final Camera shooterCam;
-    public final Camera climberCam;
-    public final Camera intakeCam;
+    
+    //Create cameras here.
+    public final Camera exampCam;
+   
 
     public Camera[] cameraList;
 
     private double allowedPoseAmbiguity = 1;
-    private double objectDetectionYaw = 0;
 
     /** Constructor */
     public Vision(){
@@ -84,31 +77,18 @@ public class Vision extends SubsystemBase{
         
         targets.add(new PhotonTrackedTarget());
 
-        shooterCam = new Camera(
-            "OV9281_4", 
+        exampCam = new Camera(
+            "Example name", 
             cameraPositionsToCenter[0], 
             new EstimatedRobotPose(estPose3d, 0.0, targets, PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR), 
             this
         );
 
-        climberCam = new Camera(
-            "OV9281_3 (1)", 
-            cameraPositionsToCenter[1], 
-            new EstimatedRobotPose(estPose3d, 0.0, targets, PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR), 
-            this
-        );
-
-        intakeCam = new Camera(
-            "Microsoft_LifeCam_HD-3000", 
-            cameraPositionsToCenter[0], 
-            new EstimatedRobotPose(estPose3d, 0.0, targets, PoseStrategy.AVERAGE_BEST_TARGETS), 
-            this
-        );
+        
 
 
         cameraList = new Camera[] {
-            shooterCam,
-            climberCam,
+            exampCam,
         };
         
     }
@@ -116,12 +96,8 @@ public class Vision extends SubsystemBase{
     public void periodic(){
 
         Optional<EstimatedRobotPose> estPose;
-        PhotonPipelineResult objectResult = intakeCam.getLatestResult();
-        if(objectResult != null){
-            if(objectResult.hasTargets()){
-                objectDetectionYaw = objectResult.getBestTarget().getYaw();
-            }
-        }
+        
+        
         for(Camera camera : cameraList){
             estPose = camera.getEstimatedGlobalPose(robotPose);
             robotPose = camera.estRobotPose.estimatedPose.toPose2d();
@@ -257,7 +233,5 @@ public class Vision extends SubsystemBase{
         return null;
     }
 
-    public double getGamepieceYaw(){
-        return objectDetectionYaw;
-    }
+
 }
