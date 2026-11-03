@@ -2,6 +2,7 @@ package team7111.lib.pathfinding;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
 public class Waypoint {
     private Pose2d pose;
@@ -28,23 +29,32 @@ public class Waypoint {
      * Checks if the robot is within the bounds of the waypoint.
      * @param robotPose - The current pose of the robot.
      */
-    public boolean isAtWaypoint(Pose2d robotPose){
+    public boolean isAtWaypoint(Pose2d robotPose, ChassisSpeeds currSpeeds){
 
-        //Checks translation tolerance
-        if (robotPose.getX() < (pose.getX() + transConstraints.getTolerance())
-         && robotPose.getX() > (pose.getX() - transConstraints.getTolerance()) ){
-            if (robotPose.getY() < (pose.getY() + transConstraints.getTolerance())
-             && robotPose.getY() > (pose.getY() - transConstraints.getTolerance()) ){
-                //Checks rotation tolerance
-                if(robotPose.getRotation().getDegrees() < pose.getRotation().getDegrees() + rotConstraints.getTolerance())
-                {
-                    if(robotPose.getRotation().getDegrees() > pose.getRotation().getDegrees() - rotConstraints.getTolerance())
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
+        //Checks translation and rotation tolerance
+        double translationError = Math.hypot(
+    robotPose.getX() - pose.getX(),
+    robotPose.getY() - pose.getY()
+);
+
+double rotationError = Math.abs(
+    robotPose.getRotation()
+        .minus(pose.getRotation())
+        .getDegrees()
+);
+
+double currentSpeed = Math.hypot(
+    currSpeeds.vxMetersPerSecond,
+    currSpeeds.vyMetersPerSecond
+);
+
+if (translationError <= transConstraints.getTolerance()
+        && rotationError <= rotConstraints.getTolerance()
+        && currentSpeed <= transConstraints.getMaxSpeed()
+        && currentSpeed >= transConstraints.getMinSpeed()) {
+
+    return true;
+}
 
         
         return false;

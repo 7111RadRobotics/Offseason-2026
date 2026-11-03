@@ -6,6 +6,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class PathMaster {
     private PIDController xPID;
@@ -127,6 +128,7 @@ public class PathMaster {
      * Runs the path's periodic and calculates the speed suppliers for x, y, and rotation.
      */
     public void periodic(Path path){
+        SmartDashboard.putNumber("Command Rot Dps",Math.toDegrees(getPathSpeeds(path, avoidFieldElements, fieldRelative).omegaRadiansPerSecond));
         path.periodic();
         xCalculation = xPID.calculate(suppliedPose.get().getX(), path.getCurrentWaypoint().getPose().getX()) * invertedX;
         yCalculation = yPID.calculate(suppliedPose.get().getY(), path.getCurrentWaypoint().getPose().getY()) * invertedY;
@@ -140,12 +142,15 @@ public class PathMaster {
      * Returns a ChassisSpeeds object for handing to the swerve subsystem
      */
     public ChassisSpeeds getPathSpeeds(Path path, boolean avoidFieldElements, boolean fieldRelative){
+
+        
         
         ChassisSpeeds chassisSpeeds = fieldRelative
-            ? ChassisSpeeds.fromFieldRelativeSpeeds(path.getTranslationXSpeed(), path.getTranslationYSpeed(), path.getRotationSpeed(), gyroYaw.get().times(invertedGyro))
-            : new ChassisSpeeds(path.getTranslationXSpeed(), path.getTranslationYSpeed(), path.getRotationSpeed());
+            ? ChassisSpeeds.fromFieldRelativeSpeeds(path.getChassisSpeeds().vxMetersPerSecond, path.getChassisSpeeds().vyMetersPerSecond, path.getChassisSpeeds().omegaRadiansPerSecond, gyroYaw.get().times(invertedGyro))
+            : new ChassisSpeeds(path.getChassisSpeeds().vxMetersPerSecond, path.getChassisSpeeds().vyMetersPerSecond, path.getChassisSpeeds().omegaRadiansPerSecond);
 
         return chassisSpeeds;
 
     }
 }
+

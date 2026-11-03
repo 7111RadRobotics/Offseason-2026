@@ -107,8 +107,8 @@ public class Swerve extends SubsystemBase {
         /*pathMaster.setTranslationPID(3, 0.015215, 0.1012);
         pathMaster.setRotationPID(0.1425, 0.000, 0.00240225);*/
 
-        pathMaster.setTranslationPID(5, 0.01, 0.001);
-        pathMaster.setRotationPID(0.25, 0, 0.003);
+       pathMaster.setTranslationPID(15, 0.05, 0.001);
+        pathMaster.setRotationPID(0.22, 0.0001, 0.02);
         pathMaster.setInversions(false, false, RobotBase.isSimulation(), false);
 
         
@@ -272,6 +272,7 @@ public class Swerve extends SubsystemBase {
 
         SwerveModuleState[] states = SwerveConstants.kinematics.toSwerveModuleStates(chassisSpeeds);
 
+
         setModuleStates(states, isOpenLoop);
 
         // Converts module states to chassis speeds
@@ -314,12 +315,19 @@ public class Swerve extends SubsystemBase {
     public void setModuleStates(SwerveModuleState[] states) {
         setModuleStates(states, false);
     }
-
+    /**
+     * 
+     * @param states
+     * An array of states desired
+     * @param isOpenLoop
+     * boolean containing whether or not robot is open loop
+     */
     private void setModuleStates(SwerveModuleState[] states, boolean isOpenLoop) {
-        // Makes sure the module states don't exceed the max speed.
         SwerveDriveKinematics.desaturateWheelSpeeds(states, SwerveConstants.maxDriveVelocity);
         this.states = states;
         for (int i = 0; i < modules.length; i++) {
+            states[i].optimize(states[i].angle);
+            states[i].cosineScale(states[i].angle);
             modules[i].setState(states[modules[i].moduleNumber], isOpenLoop);
         }
     }

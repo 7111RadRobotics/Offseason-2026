@@ -28,24 +28,23 @@ public class Autonomous extends SubsystemBase {
 
     private Timer timer = new Timer();
 
-    private Field zone;
 
     private StructArrayPublisher<Pose2d> hubPublisher = 
             NetworkTableInstance.getDefault().getStructArrayTopic("Hub Presets", Pose2d.struct).publish();
 
-    private WaypointConstraints fastTransConstraints = new WaypointConstraints(8, 2, 0.5);
-    private WaypointConstraints fastRotConstraints = new WaypointConstraints(720, 0, 90);
+    private WaypointConstraints fastTransConstraints = new WaypointConstraints(8, 0, 3, 1);
+    private WaypointConstraints fastRotConstraints = new WaypointConstraints(720, 0, 360, 90);
     
-    private WaypointConstraints balancedTransConstraints = new WaypointConstraints(3, 0, 0.2);
-    private WaypointConstraints balancedRotConstraints = new WaypointConstraints(270, 0, 5);
+    private WaypointConstraints balancedTransConstraints = new WaypointConstraints(4, 0, 3, 0.25);
+    private WaypointConstraints balancedRotConstraints = new WaypointConstraints(540, 0, 270, 5);
 
-    private WaypointConstraints slowTransConstraints = new WaypointConstraints(1, 0, 0.2);
-    private WaypointConstraints slowRotConstraints = new WaypointConstraints(180, 0, 0.8);
+    private WaypointConstraints slowTransConstraints = new WaypointConstraints(1.5, 0, 3, 0.1);
+    private WaypointConstraints slowRotConstraints = new WaypointConstraints(360, 0, 180, 0.8);
 
     private SendableChooser<Autos> autoChooser = new SendableChooser<>();
     private SuperStructure superStructure;
 
-    private Pose2d assumedStartingPose = new Pose2d(3.5, 4, Rotation2d.kZero);
+    private Pose2d assumedStartingPose = new Pose2d(0, 0, Rotation2d.kZero);
 
     
 
@@ -70,7 +69,7 @@ public class Autonomous extends SubsystemBase {
         defaultPath,
     }
 
-    public Autonomous(Field zone){
+    public Autonomous(){
         Autos defaultAuto = Autos.defaultAuto;
         for (Autos auto : Autos.values()) {
             autoChooser.addOption(auto.name(), auto);
@@ -78,7 +77,6 @@ public class Autonomous extends SubsystemBase {
      
         
         autoChooser.setDefaultOption(defaultAuto.name(), defaultAuto);
-        this.zone = zone;
         
         Shuffleboard.getTab("Autonomous").add("AutoChooser", autoChooser);
         Shuffleboard.getTab("Autonomous").addString("Selected Auto", () -> getSelectedAuto().name());
@@ -130,7 +128,8 @@ public class Autonomous extends SubsystemBase {
         // define Path object for each Paths enum using a switch statement
         switch (path) {
             case forward:
-                waypoints.add(balancedPoint(5.34, 0.625, 0));
+                waypoints.add(slowPoint(1.5, 0.0, 180));
+                waypoints.add(slowPoint(0, 0, 0));
                 
                 break;
             

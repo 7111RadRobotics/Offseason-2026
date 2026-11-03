@@ -38,7 +38,7 @@ public class SuperStructure extends SubsystemBase {
      * The top 2 state names are temporary states for testing 
      */
     public enum SuperState {
-        defaultState,
+        stateDefault,
         autonomousEnter,
         autonomous,
         autonomousExit,
@@ -48,20 +48,21 @@ public class SuperStructure extends SubsystemBase {
     private final Autonomous auto;
     private final Swerve swerve;
     private final Vision vision;
-    private final Field field;
 
     // Buttons of controllers can be assigned to booleans which are checked in various super states. 
     private final XboxController driverController = new XboxController(0);
     private final XboxController operatorController = new XboxController(1);
 
     /** This represents the current superstate of the robot */
-    private SuperState superState = SuperState.defaultState;
+    private SuperState superState = SuperState.stateDefault;
     private boolean hasAcheivedState = false;
 
     private boolean inAuto = false;
     private int autoIndex = 0;
     private List<AutoAction> autoActions;
 
+    private double matchTime;
+    private boolean defaultDrive = true;
 
 
     private Autos currentAutos;
@@ -74,16 +75,15 @@ public class SuperStructure extends SubsystemBase {
      * The constructor will take each subsystem as an argument and save them as objects in the class. 
      * @param subsystem represents a subsystem. 
      */
-    public SuperStructure(Autonomous auto, Swerve swerve, Vision vision, Field field){
+    public SuperStructure(Autonomous auto, Swerve swerve, Vision vision){
         this.auto = auto;
         this.swerve = swerve;
         this.vision = vision;
-        this.field = field;
         currentAutos = auto.getSelectedAuto();
         autoActions = auto.getAutonomous(auto.getSelectedAuto());
 
         DriverStation.silenceJoystickConnectionWarning(true);
-        this.swerve.setJoysickInputs(() -> -driverController.getLeftX(), () -> -driverController.getLeftY(), () -> driverController.getRightX());
+        this.swerve.setJoysickInputs(() -> -driverController.getLeftX(), () -> -driverController.getLeftY(), () -> -driverController.getRightX());
         this.swerve.setDriveFieldRelative(true);
         this.swerve.setSwerveState(SwerveState.manual);
 
@@ -102,18 +102,47 @@ public class SuperStructure extends SubsystemBase {
         long startTime = System.nanoTime();
         SmartDashboard.putString("SuperState", superState.name());
 
-       
-
         SmartDashboard.putBoolean("roboPoseIsNull", vision.getRobotPose(0.1) == null);
         final boolean useOneCamera = false; // determine whether true or false
         boolean hasAppliedVisionMeasurement = false;
         Pose3d visionRobotPoseExample = vision.getRobotPose(vision.exampCam, 0.15);
         Pose3d bestVisionRobotPose = vision.getBestRobotPose(0.15);
 
+        matchTime = DriverStation.getMatchTime();
+
         boolean useAssumedPose = true;
         if(bestVisionRobotPose != null){
             useAssumedPose = false;
             swerve.addVisionMeasurement(bestVisionRobotPose.toPose2d(), true);
+        }
+
+        if((matchTime <= 0 && DriverStation.isDisabled()) || driverController.getYButtonPressed()){
+            Autos selectedAuto = auto.getSelectedAuto();
+            if (!currentAutos.equals(selectedAuto) || driverController.getYButtonPressed()){
+                autoActions = auto.getAutonomous(selectedAuto);
+                if(useAssumedPose)
+                    swerve.resetOdometry(auto.getAssumedPose());
+                ArrayList<Pose2d> pathPoses = new ArrayList<>();
+                pathPoses.add(auto.getAssumedPose());
+                for (AutoAction action : autoActions) {
+                    if(action.isPath()){
+                        Path displayPath = action.getAsPath();
+                        if(DriverStation.getAlliance().isPresent()){
+                            if(DriverStation.getAlliance().get().equals(Alliance.Red)){
+                                Path flippedPath = new Path(action.getAsPath().getWaypoints());
+                                //flippedPath.flipPath(true, false);
+                                displayPath = flippedPath;
+                            }
+                        }
+                        for (Waypoint waypoint : displayPath.getWaypoints()) {
+                            pathPoses.add(waypoint.getPose());
+                        }
+                        //displayPath.flipPath(false, false);
+                    }
+                }
+                swerve.displayPathPoses(pathPoses);
+                currentAutos = selectedAuto;
+            }
         }
 
       
@@ -133,8 +162,14 @@ public class SuperStructure extends SubsystemBase {
      
         long endTime = System.nanoTime();
 
+         if(defaultDrive && !inAuto){
+            swerve.setSwerveState(SwerveState.manual);
+        }
+
         //Timing measurement, in milliseconds
         SmartDashboard.putNumber("Time for superstructure periodic", (double) ((endTime - startTime) / 1000000.0));
+
+        hasAcheivedState = manageSuperState(superState);
 
     }
 
@@ -151,6 +186,8 @@ public class SuperStructure extends SubsystemBase {
      */
     private boolean manageSuperState(SuperState state){
         switch(state){
+            case stateDefault:
+                return stateDefault();
             case autonomous:
                 return autonomous();
             case autonomousEnter:
@@ -169,6 +206,11 @@ public class SuperStructure extends SubsystemBase {
      * @return true if the state is complete. The condition could represent mechanisms at a setpoint, a beambreak trigger, a timer, etc.
      * Mainly used for autonomous routines.
      */
+
+     private boolean stateDefault(){
+        swerve.setSwerveState(SwerveState.manual);
+        return true;
+     }
    
 
     /** 
@@ -250,7 +292,7 @@ public class SuperStructure extends SubsystemBase {
     private boolean autonomousExit(){
         inAuto = false;
         swerve.setSwerveState(SwerveState.manual);
-        setSuperState(SuperState.defaultState);
+        setSuperState(SuperState.stateDefault);
         
        
         return true;

@@ -38,16 +38,12 @@ public class NovaMotor implements Motor {
     private double negativeVoltageLimit = -100;
     private double positiveVelocityLimit = 5000;
     private double negativeVelocityLimit = -5000;
-    private Follower follower;
     private SimpleMotorFeedforward feedforward;
     private ArmFeedforward armFF;
     private ElevatorFeedforward elevatorFF;
     private int id;
     private boolean isFollower = false;
-    private boolean isFollowerInverted = false;
-    private int leaderID;
 
-    private VelocityVoltage velocityVoltage = new VelocityVoltage(0);
 
     private GenericEntry motorPEntry;
     private GenericEntry motorIEntry;

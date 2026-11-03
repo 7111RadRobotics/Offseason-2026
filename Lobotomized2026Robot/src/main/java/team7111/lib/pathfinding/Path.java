@@ -5,6 +5,8 @@ import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -22,6 +24,13 @@ public class Path {
     private DoubleSupplier xTransSpeed = () -> 0.0;
     private DoubleSupplier yTransSpeed = () -> 0.0;
     private DoubleSupplier rotSpeed = () -> 0.0;
+
+    public boolean firstSpeed = false;
+
+    private double lastXSpeed = 0;
+    private double lastYSpeed = 0;
+    private double lastRotSpeed = 0;
+
 
     private int currentWaypointIndex = 0;
     
@@ -67,85 +76,88 @@ public class Path {
     public Waypoint[] getWaypoints(){
         return waypoints;
     }
+
+   
     
-    /**
-     * Returns in degrees per second, positive clockwise.
-     */
-    public double getRotationSpeed(){
-        double speed = rotSpeed.getAsDouble();
-        WaypointConstraints waypointConstraints = getCurrentWaypoint().getRotationConstraints();
-        if(speed > waypointConstraints.getMaxSpeed()) {
-            speed = waypointConstraints.getMaxSpeed();
-        }
-        if(speed < -waypointConstraints.getMaxSpeed()){
-            speed = -waypointConstraints.getMaxSpeed();
-        }
-        if(Math.abs(speed) < waypointConstraints.getMinSpeed()){
-            if(speed > 0){
-                speed = waypointConstraints.getMinSpeed();
-            }else{
-                speed = -waypointConstraints.getMinSpeed();
-            }
-        }
-        //speed = rotSpeed.getAsDouble();
-        return speed;
-    }
+   
 
     /**
-     * Returns in meters per second.
+     * Units are in Meters and Radians
+     * @returns a ChassisSpeeds with limits applied
+     * 
      */
-    public double getTranslationXSpeed(){
-        double combinedSpeed = Math.hypot(xTransSpeed.getAsDouble(), yTransSpeed.getAsDouble());
-        double angle = Math.atan2(yTransSpeed.getAsDouble(), xTransSpeed.getAsDouble());
-        double speed = xTransSpeed.getAsDouble();
-        WaypointConstraints waypointConstraints = getCurrentWaypoint().getTranslationConstraints();
 
-        if(Math.abs(combinedSpeed) > waypointConstraints.getMaxSpeed()){
-            if(combinedSpeed > waypointConstraints.getMaxSpeed()){
-                speed = Math.cos(angle) * waypointConstraints.getMaxSpeed();
-            }else {
-                speed = Math.cos(angle) * -waypointConstraints.getMaxSpeed();
-            }
+    public ChassisSpeeds getChassisSpeeds(){
+        double dt = 1.0/50.0;
+
+        double desCompSpeed = Math.hypot(xTransSpeed.getAsDouble(), yTransSpeed.getAsDouble());
+        double rotSpeed = Units.radiansToDegrees(this.rotSpeed.getAsDouble());
+        double xSpeed = xTransSpeed.getAsDouble();
+        double ySpeed = yTransSpeed.getAsDouble();
+        WaypointConstraints constraints = getCurrentWaypoint().getTranslationConstraints();
+        WaypointConstraints rotConstraints = getCurrentWaypoint().getRotationConstraints();
+
+        //Trans speed limits
+
+        if (desCompSpeed != 0 && desCompSpeed > constraints.getMaxSpeed()) {
+            xSpeed = xSpeed * constraints.getMaxSpeed() / desCompSpeed;
+            ySpeed = ySpeed * constraints.getMaxSpeed() / desCompSpeed;
+            }  
+        
+        
+        if (desCompSpeed != 0 && desCompSpeed < constraints.getMinSpeed()) {
+            xSpeed = xSpeed * constraints.getMinSpeed() / desCompSpeed;
+            ySpeed = ySpeed * constraints.getMinSpeed() / desCompSpeed;
+        }
+
+
+        //Rot Speed limits
+
+        if (Math.abs(rotSpeed) > rotConstraints.getMaxSpeed()) {
+            rotSpeed = Math.copySign(rotConstraints.getMaxSpeed(), rotSpeed);
+        }
+
+        if (rotSpeed != 0 && Math.abs(rotSpeed) < rotConstraints.getMinSpeed()) {
+            rotSpeed = Math.copySign(rotConstraints.getMinSpeed(), rotSpeed);
+        }
+
+        
+        // Acceleration limits
+
+        double dx = xSpeed - lastXSpeed;
+        double dy = ySpeed - lastYSpeed;
+
+        double deltaO = rotSpeed - lastRotSpeed;
+        double maxDeltaOmega = rotConstraints.getMaxAccel() * dt;
+        double deltaV = Math.hypot(dx, dy);
+        double maxDeltaV = constraints.getMaxAccel() * dt;
+
+        if (deltaV > maxDeltaV) {
+            double scale =  maxDeltaV / deltaV;
+            dx *= scale;
+            dy *= scale;
+
+            xSpeed = lastXSpeed + dx;
+            ySpeed = lastYSpeed + dy;
+        }
+
+        if (Math.abs(deltaO) > maxDeltaOmega) {
+            deltaO = Math.copySign(maxDeltaOmega, deltaO);
+
+            rotSpeed = lastRotSpeed + deltaO;
         }
         
-        if(Math.abs(combinedSpeed) < waypointConstraints.getMinSpeed()){
-            if(combinedSpeed > 0){
-                speed = Math.cos(angle) * waypointConstraints.getMinSpeed();
-            }else{
-                speed = Math.cos(angle) * -waypointConstraints.getMinSpeed();
-            }
-        }
+        //finished var constructed and lastSpeeds set
 
-        return speed;
+        ChassisSpeeds limitSpeed = new ChassisSpeeds(xSpeed, ySpeed, Math.toRadians(rotSpeed));
+
+        setLastSpeeds(limitSpeed.vxMetersPerSecond, limitSpeed.vyMetersPerSecond, Math.toRadians(rotSpeed));
+        
+        return limitSpeed;
+        
     }
 
-    /**
-     * Returns in meters per second.
-     */
-    public double getTranslationYSpeed(){
-        double combinedSpeed = Math.hypot(xTransSpeed.getAsDouble(), yTransSpeed.getAsDouble());
-        double angle = Math.atan2(yTransSpeed.getAsDouble(), xTransSpeed.getAsDouble());
-        double speed = yTransSpeed.getAsDouble();
-        WaypointConstraints waypointConstraints = getCurrentWaypoint().getTranslationConstraints();
-        
-        if(Math.abs(combinedSpeed) > waypointConstraints.getMaxSpeed()){
-            if(combinedSpeed > waypointConstraints.getMaxSpeed()){
-                speed = Math.sin(angle) * waypointConstraints.getMaxSpeed();
-            }else {
-                speed = Math.sin(angle) * -waypointConstraints.getMaxSpeed();
-            }
-        }
-        
-        if(Math.abs(combinedSpeed) < waypointConstraints.getMinSpeed()){
-            if(combinedSpeed > 0){
-                speed = Math.sin(angle) * waypointConstraints.getMinSpeed();
-            }else{
-                speed = Math.sin(angle) * -waypointConstraints.getMinSpeed();
-            }
-        }
-
-        return speed;
-    }
+    
 
     /**
      * Sets the suppliers for speed on the robot to be equal to local variables.
@@ -157,6 +169,16 @@ public class Path {
         xTransSpeed = xSpeed;
         yTransSpeed = ySpeed;
         this.rotSpeed = rotSpeed;
+    }
+
+    public void setLastSpeeds(double xSpeed, double ySpeed, double rotSpeed) {
+        lastXSpeed = xSpeed;
+        lastYSpeed = ySpeed;
+        lastRotSpeed = Units.radiansToDegrees(rotSpeed);
+    }
+
+    public ChassisSpeeds getSpeeds() {
+        return new ChassisSpeeds(lastXSpeed, lastYSpeed, lastRotSpeed);
     }
 
     /**
@@ -242,10 +264,6 @@ public class Path {
         }
 
         
-
-        //Figure out pathfinding algorithm. TODO
-        //https://en.wikipedia.org/wiki/A*_search_algorithm
-        //Use A* algorithm?
     }
     
     /**
@@ -253,6 +271,10 @@ public class Path {
      * If path is finished, sets path to finished and will not path to new waypoint.
      */
     public void periodic(){
+        SmartDashboard.putBoolean("IsWaypoint", waypoints[currentWaypointIndex].isAtWaypoint(robotPose.get(),new ChassisSpeeds(getChassisSpeeds().vxMetersPerSecond, getChassisSpeeds().vyMetersPerSecond, getChassisSpeeds().omegaRadiansPerSecond)));
+        SmartDashboard.putNumber("Last X Speed", lastXSpeed);
+        SmartDashboard.putNumber("Last Y Speed", lastYSpeed);
+        SmartDashboard.putNumber("Last Rot Speed", lastRotSpeed);
         if(robotPose == null){
             System.out.println("RobotPose null");
             return;
@@ -261,7 +283,7 @@ public class Path {
             System.out.println("waypoints null");
             return;
         }
-        if(waypoints[currentWaypointIndex].isAtWaypoint(robotPose.get()))
+        if(waypoints[currentWaypointIndex].isAtWaypoint(robotPose.get(), new ChassisSpeeds(getChassisSpeeds().vxMetersPerSecond, getChassisSpeeds().vyMetersPerSecond, getChassisSpeeds().omegaRadiansPerSecond)))
         {
             System.out.println("Next Waypoint");
             if(currentWaypointIndex == waypoints.length - 1){
@@ -270,6 +292,7 @@ public class Path {
                 return;
             }
             currentWaypointIndex++;
+            firstSpeed = true;
         }
     }
 

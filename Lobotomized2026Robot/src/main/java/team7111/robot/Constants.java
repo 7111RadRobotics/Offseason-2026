@@ -51,7 +51,7 @@ public class Constants {
     /** All swerve constants. */
     public static class SwerveConstants {
         /** Contains robot-specific drivebase constants */
-        public static final DrivebaseConfig drivebaseConfig = DrivebaseConfig.getBoxChassis(RobotBase.isSimulation());
+        public static final DrivebaseConfig drivebaseConfig = DrivebaseConfig.getWhiplash(RobotBase.isSimulation());
         
         /** Constants that apply to the whole drive train. */
         public static final double wheelBaseWidth = drivebaseConfig.width; // Width of the drivetrain measured from the middle of the wheels.
@@ -77,8 +77,8 @@ public class Constants {
         public static final double closedLoopRamp = 0.0;
         
         /** Swerve constraints. */
-        public static final double maxDriveVelocity = 0.25;
-        public static final double maxAngularVelocity = 0.5;
+        public static final double maxDriveVelocity = 4.0;
+        public static final double maxAngularVelocity = 5.5;
         public static final double sensitivity = 1;
 
         /** 
