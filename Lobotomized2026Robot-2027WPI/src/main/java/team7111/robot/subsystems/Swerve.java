@@ -12,16 +12,13 @@ import org.wpilib.math.kinematics.ChassisVelocities;
 import org.wpilib.math.kinematics.Kinematics;
 import org.wpilib.math.kinematics.SwerveDriveKinematics;
 import org.wpilib.math.kinematics.SwerveModulePosition;
-import org.wpilib.math.kinematics.SwerveModuleState;
 import org.wpilib.math.util.Units;
 import org.wpilib.networktables.GenericEntry;
 import org.wpilib.networktables.NetworkTableInstance;
 import org.wpilib.networktables.StructArrayPublisher;
 import org.wpilib.networktables.StructPublisher;
-import org.wpilib.util.sendable.SendableBuilder;
 import org.wpilib.command2.SubsystemBase;
 import org.wpilib.smartdashboard.Field2d;
-import org.wpilib.smartdashboard.SmartDashboard;
 import org.wpilib.driverstation.MatchState;
 import org.wpilib.driverstation.RobotState;
 import org.wpilib.driverstation.Alliance;
@@ -29,6 +26,11 @@ import org.wpilib.driverstation.MatchType;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.framework.RobotBase;
 import org.wpilib.system.Timer;
+import org.wpilib.telemetry.Telemetry;
+import org.wpilib.telemetry.TelemetryRegistry;
+import org.wpilib.telemetry.TelemetryTable;
+import org.wpilib.tunable.TunableDouble;
+import org.wpilib.tunable.Tunables;
 import org.wpilib.driverstation.Alliance;
 import org.wpilib.drive.RobotDriveBase;
 import team7111.lib.pathfinding.*;
@@ -46,7 +48,6 @@ public class Swerve extends SubsystemBase {
 
     private final GenericGyro gyro;
     private SwerveModuleState[] states = new SwerveModuleState[]{};
-
     private StructArrayPublisher<SwerveModuleState> commandedStatePublisher = 
             NetworkTableInstance.getDefault().getStructArrayTopic("Commanded Swerve States", SwerveModuleState.struct).publish();
     private StructArrayPublisher<SwerveModuleState> actualStatePublisher = 
@@ -80,6 +81,10 @@ public class Swerve extends SubsystemBase {
     private double rotationVelocity;
 
     private SwerveDriveKinematics kinematics;
+
+    TunableDouble snapAngleP = Tunables.addDouble("SnapAngle P", 0.25);
+    TunableDouble snapAngleI = Tunables.addDouble("SnapAngle I", 0.0);
+    TunableDouble snapAngleD = Tunables.addDouble("SnapAngle D", 0.002);
 
     private final double controllerDeadzone = 0.0;
 
@@ -122,10 +127,6 @@ public class Swerve extends SubsystemBase {
         snapAnglePID = new PIDController(0.25, 0, 0.002);
         gamepieceAnglePID = new PIDController(0.01, 0, 0);
 
-        SmartDashboard.putNumber("SnapAngle P", 0.25);
-        SmartDashboard.putNumber("SnapAngle I", 0.0);
-        SmartDashboard.putNumber("SnapAngle D", 0.002);
-
         //Velocity kinematics object
         kinematics = SwerveConstants.kinematics;
         //new SwerveDriveKinematics(modules[0].getOffset(),
@@ -137,43 +138,43 @@ public class Swerve extends SubsystemBase {
     @Override 
     public void periodic() {
 
-        SmartDashboard.putNumber("Snap angle", snapAngleSetpoint);
+        Telemetry.log("Snap angle", snapAngleSetpoint);
 
-        SmartDashboard.putNumber("Rotation", getYaw().getDegrees());
+        Telemetry.log("Rotation", getYaw().getDegrees());
 
-        snapAnglePID.setP(SmartDashboard.getNumber("SnapAngle P", 0.25));
-        snapAnglePID.setI(SmartDashboard.getNumber("SnapAngle I", 0));
-        snapAnglePID.setD(SmartDashboard.getNumber("SnapAngle D", 0.002));
+        snapAnglePID.setP(snapAngleP.get());
+        snapAnglePID.setI(snapAngleI.get());
+        snapAnglePID.setD(snapAngleD.get());
 
         gyro.update();
         swerveOdometry.update(getYaw(), getPositions());
         commandedStatePublisher.set(states);
 
         for(SwerveModule mod : modules){
-            SmartDashboard.putNumber("Mod " + mod.moduleNumber + " Cancoder", mod.getEncoder().getDegrees());
-            SmartDashboard.putNumber("Mod " + mod.moduleNumber + " Integrated", mod.getPosition().angle.getDegrees());
-            SmartDashboard.putNumber("Mod " + mod.moduleNumber + " Velocity", mod.getState().velocity);
-            SmartDashboard.putNumber("Mod " + mod.moduleNumber + " Drive Meters", mod.getPosition().distanceMeters);
-            SmartDashboard.putNumber("Mod " + mod.moduleNumber + " Drive Rotations", mod.getPosition().distanceMeters / SwerveConstants.wheelCircumference);
+            Telemetry.log("Mod " + mod.moduleNumber + " Cancoder", mod.getEncoder().getDegrees());
+            Telemetry.log("Mod " + mod.moduleNumber + " Integrated", mod.getPosition().angle.getDegrees());
+            Telemetry.log("Mod " + mod.moduleNumber + " Velocity", mod.getState().velocity);
+            Telemetry.log("Mod " + mod.moduleNumber + " Drive Meters", mod.getPosition().distance);
+            Telemetry.log("Mod " + mod.moduleNumber + " Drive Rotations", mod.getPosition().distance / SwerveConstants.wheelCircumference);
         }
-        SmartDashboard.putNumber("Gyro Yaw", getYaw().getDegrees());
+        Telemetry.log("Gyro Yaw", getYaw().getDegrees());
 
         field.setRobotPose(getPose());
-        SmartDashboard.putData(field);
+        Telemetry.log("Field", field);
         robotPosePublisher.set(getPose());
 
         actualStatePublisher.set(getStates());
 
         manageSwerveState();
 
-        SmartDashboard.putString("swerveState", currentSwerveState.name());
+        Telemetry.log("swerveState", currentSwerveState.name());
 
         if(MatchState.getAlliance().isPresent()){
             pathMaster.useAllianceFlipping(MatchState.getAlliance().get() == Alliance.RED, false);
         }
 
-        SmartDashboard.putNumber("X speed", robotXVelocity);
-        SmartDashboard.putNumber("Y speed", robotYVelocity);
+        Telemetry.log("X speed", robotXVelocity);
+        Telemetry.log("Y speed", robotYVelocity);
     }
 
     public void simulationPeriodic(){
@@ -381,7 +382,7 @@ public class Swerve extends SubsystemBase {
     }
 
     public void zeroGyro() {
-        gyro.setYaw(Rotation2d.kZero);
+        gyro.setYaw(Rotation2d.ZERO);
         
     }
 
@@ -391,20 +392,20 @@ public class Swerve extends SubsystemBase {
         this.path = path;
     }
 
+
+    //TODO overlook this fuction, I struggled a bit when replacing it.
     @Override
-    public void initSendable(SendableBuilder builder) {
-        super.initSendable(builder);
+    public void logTo(TelemetryTable builder) {
+        super.logTo(builder);
         for (SwerveModule module : modules) {
-            builder.addDoubleProperty(
+            builder.log(
             String.format("Drive Pos %d", module.moduleNumber),
-            () -> module.getPosition().distanceMeters,
-            null);
+            module.getPosition().distance);
 
             
-            builder.addDoubleProperty(
+            builder.log(
             String.format("Angle %d", module.moduleNumber),
-            () -> module.getAngle().getDegrees(),
-            null);
+            module.getAngle().getDegrees());
         }
     }
 }

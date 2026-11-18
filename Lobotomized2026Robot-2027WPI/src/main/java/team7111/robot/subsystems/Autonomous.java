@@ -8,7 +8,11 @@ import java.util.List;
 
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.networktables.DoublePublisher;
+import org.wpilib.networktables.GenericEntry;
+import org.wpilib.networktables.NetworkTable;
 import org.wpilib.networktables.NetworkTableInstance;
+import org.wpilib.networktables.StringPublisher;
 import org.wpilib.networktables.StructArrayPublisher;
 import org.wpilib.networktables.StructPublisher;
 import org.wpilib.driverstation.MatchState;
@@ -17,10 +21,11 @@ import org.wpilib.driverstation.Alliance;
 import org.wpilib.driverstation.MatchType;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.system.Timer;
+import org.wpilib.telemetry.Telemetry;
+import org.wpilib.telemetry.TelemetryEntry;
+import org.wpilib.tunable.Selectable;
 import org.wpilib.driverstation.Alliance;
-import org.wpilib.shuffleboard.Shuffleboard;
 import org.wpilib.smartdashboard.Field2d;
-import org.wpilib.smartdashboard.SendableChooser;
 import org.wpilib.command2.SubsystemBase;
 import team7111.lib.pathfinding.Path;
 import team7111.lib.pathfinding.Waypoint;
@@ -46,10 +51,12 @@ public class Autonomous extends SubsystemBase {
     private WaypointConstraints slowTransConstraints = new WaypointConstraints(1, 0, 0.2);
     private WaypointConstraints slowRotConstraints = new WaypointConstraints(180, 0, 0.8);
 
-    private SendableChooser<Autos> autoChooser = new SendableChooser<>();
+    private Selectable<Autos> autoChooser = new Selectable<>();
     private SuperStructure superStructure;
 
-    private Pose2d assumedStartingPose = new Pose2d(3.5, 4, Rotation2d.kZero);
+    private Pose2d assumedStartingPose = new Pose2d(3.5, 4, Rotation2d.ZERO);
+
+    StringPublisher autoPub;
 
     
 
@@ -77,16 +84,18 @@ public class Autonomous extends SubsystemBase {
     public Autonomous(Field zone){
         Autos defaultAuto = Autos.defaultAuto;
         for (Autos auto : Autos.values()) {
-            autoChooser.addOption(auto.name(), auto);
+            autoChooser.add(auto.name(), auto);
         }
      
         
-        autoChooser.setDefaultOption(defaultAuto.name(), defaultAuto);
+        autoChooser.addDefault(defaultAuto.name(), defaultAuto);
         this.zone = zone;
-        
-        Shuffleboard.getTab("Autonomous").add("AutoChooser", autoChooser);
-        Shuffleboard.getTab("Autonomous").addString("Selected Auto", () -> getSelectedAuto().name());
 
+        NetworkTableInstance inst = NetworkTableInstance.getDefault();
+        NetworkTable table = inst.getTable("datatable");
+        autoPub = table.getStringTopic("Auto").publish();
+
+        autoPub.set(getSelectedAuto().name());
     }
 
     public void periodic(){

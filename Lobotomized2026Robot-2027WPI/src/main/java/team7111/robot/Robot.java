@@ -7,6 +7,9 @@ package team7111.robot;
 import org.wpilib.math.geometry.Pose3d;
 import org.wpilib.math.geometry.Rotation3d;
 import org.wpilib.math.util.Units;
+import org.wpilib.networktables.DoublePublisher;
+import org.wpilib.networktables.NetworkTable;
+import org.wpilib.networktables.NetworkTableInstance;
 import org.wpilib.driverstation.MatchState;
 import org.wpilib.driverstation.RobotState;
 import org.wpilib.driverstation.Alliance;
@@ -14,7 +17,6 @@ import org.wpilib.driverstation.MatchType;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.framework.TimedRobot;
 import org.wpilib.driverstation.Alliance;
-import org.wpilib.smartdashboard.SmartDashboard;
 import org.wpilib.command2.CommandScheduler;
 import team7111.robot.subsystems.Autonomous;
 import team7111.robot.subsystems.SuperStructure;
@@ -30,6 +32,7 @@ import team7111.robot.subsystems.SuperStructure.SuperState;
  */
 public class Robot extends TimedRobot {
 
+    private DoublePublisher doublePublisher;
     private Field field;
     private Autonomous auto;
     private Swerve swerve = new Swerve();
@@ -41,6 +44,8 @@ public class Robot extends TimedRobot {
      * initialization code.
      */
     public Robot() {
+        NetworkTableInstance inst = NetworkTableInstance.getDefault();
+        NetworkTable table = inst.getTable("datatable");
         field = new Field(() -> {
             var alliance = MatchState.getAlliance();
             if(alliance.isPresent()){
@@ -50,6 +55,7 @@ public class Robot extends TimedRobot {
         });
         auto = new Autonomous(field);
         superStructure = new SuperStructure(auto, swerve, vision, field);
+        doublePublisher = table.getDoubleTopic("Total time of robot").publish();
     }
 
     /**
@@ -65,7 +71,7 @@ public class Robot extends TimedRobot {
         CommandScheduler.getInstance().run();
         long timerend = System.nanoTime();
 
-        SmartDashboard.putNumber("Total time of robot", (double) ((timerend-timerstart) / 1000000.0));
+        doublePublisher.set((timerend-timerstart) / 1000000.0);
     }
 
     /**

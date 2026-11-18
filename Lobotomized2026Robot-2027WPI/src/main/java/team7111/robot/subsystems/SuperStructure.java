@@ -1,5 +1,6 @@
 package team7111.robot.subsystems;
 
+import java.lang.classfile.constantpool.DoubleEntry;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,6 +11,12 @@ import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Pose3d;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.util.Units;
+import org.wpilib.networktables.BooleanPublisher;
+import org.wpilib.networktables.DoublePublisher;
+import org.wpilib.networktables.NetworkTable;
+import org.wpilib.networktables.NetworkTableInstance;
+import org.wpilib.networktables.StringEntry;
+import org.wpilib.networktables.StringTopic;
 import org.wpilib.driverstation.MatchState;
 import org.wpilib.driverstation.RobotState;
 import org.wpilib.driverstation.Alliance;
@@ -18,10 +25,10 @@ import org.wpilib.driverstation.MatchType;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.framework.RobotBase;
 import org.wpilib.system.Timer;
+import org.wpilib.telemetry.Telemetry;
 import org.wpilib.driverstation.XboxController;
 import org.wpilib.driverstation.Alliance;
 import org.wpilib.driverstation.GenericHID.RumbleType;
-import org.wpilib.networktables.NetworkTable;
 import org.wpilib.command2.SubsystemBase;
 
 import team7111.robot.subsystems.Autonomous.Autos;
@@ -37,7 +44,7 @@ import team7111.lib.pathfinding.*;
  * Each method uses logic to determine subsystem states, when to switch SuperStates, and what SuperState to go to next.
  * Logic used can be button inputs, subsystem states, or other subsystem conditions.
  */
-public class SuperStructure extends SubsystemBase {
+public class SuperStructure extends SubsystemBase { 
     /**
      * This enumeration contains the values or "states" which determine the subsystems.
      * The top 2 state names are temporary states for testing 
@@ -87,7 +94,6 @@ public class SuperStructure extends SubsystemBase {
         currentAutos = auto.getSelectedAuto();
         autoActions = auto.getAutonomous(auto.getSelectedAuto());
 
-        DriverStation.silenceJoystickConnectionWarning(true);
         this.swerve.setJoysickInputs(() -> -driverController.getLeftX(), () -> -driverController.getLeftY(), () -> driverController.getRightX());
         this.swerve.setDriveFieldRelative(true);
         this.swerve.setSwerveState(SwerveState.manual);
@@ -105,13 +111,11 @@ public class SuperStructure extends SubsystemBase {
         
         //Timer for the periodic
         long startTime = System.nanoTime();
-        SmartDashboard.putString("SuperState", superState.name());
-        NetworkTable.
+        Telemetry.log("SuperState", superState.name());
+
 
 
        
-
-        SmartDashboard.putBoolean("roboPoseIsNull", vision.getRobotPose(0.1) == null);
         final boolean useOneCamera = false; // determine whether true or false
         boolean hasAppliedVisionMeasurement = false;
         Pose3d visionRobotPoseExample = vision.getRobotPose(vision.exampCam, 0.15);
@@ -124,16 +128,17 @@ public class SuperStructure extends SubsystemBase {
         }
 
       
-        SmartDashboard.putString("SuperStructure Auto", currentAutos.name());
 
         // Driver controller commands
       
-        if(driverController.getStartButton()) {
+        if(driverController.getXboxButton()) {
             swerve.zeroGyro();
           
         }
 
-        if(driverController.getBackButtonPressed()) {
+
+        //TODO fix the driver controller button, getBackButtonPressed() no longer exists this is TEMPORARY
+        if(driverController.getDpadDownButton()) {
             swerve.resetOdometry(new Pose2d(0.0, 0.0, Rotation2d.fromDegrees(0)));
         }
 
@@ -141,7 +146,7 @@ public class SuperStructure extends SubsystemBase {
         long endTime = System.nanoTime();
 
         //Timing measurement, in milliseconds
-        SmartDashboard.putNumber("Time for superstructure periodic", (double) ((endTime - startTime) / 1000000.0));
+        Telemetry.log("Time for superstructure periodic", (double) ((endTime - startTime) / 1000000.0));
 
     }
 
@@ -205,9 +210,9 @@ public class SuperStructure extends SubsystemBase {
         AutoAction autoAction;
         autoAction = autoActions.get(autoIndex);
 
-        SmartDashboard.putNumber("AutoAction", autoActions.size() - 1);
-        SmartDashboard.putNumber("autoIndex", autoIndex);
-        SmartDashboard.putBoolean("IsPathFinished", isActionFinished);
+        Telemetry.log("AutoAction", autoActions.size() - 1);
+        Telemetry.log("autoIndex", autoIndex);
+        Telemetry.log("IsPathFinished", isActionFinished);
 
         if (autoAction.isPath()){
             SwerveState swerveState = swerve.getSwerveState();
